@@ -230,6 +230,15 @@ public Action Timer_DeathFadeFinished(Handle timer, int userid)
 	return Plugin_Stop;
 }
 
+// Poll for this client's one-time permission to skip the UserMsgHook
+// restrictions. This is necessary because we can re-fire a modified
+// UserMsg from within the UserMsg hook, and otherwise would then
+// re-capture & process that same message again because it'd get
+// caught in the hook after being fired.
+//
+// Assumes a valid client index as input.
+// Modifies the global _override_usermsg_hook state of that client index.
+// Returns a boolean of whether this client is allowed to skip the hook checks.
 bool OneTimeUserMsgOverride(int client)
 {
 	bool allowed = _override_usermsg_hook[client];
@@ -237,6 +246,7 @@ bool OneTimeUserMsgOverride(int client)
 	return allowed;
 }
 
+// UserMsg hook for the "Fade" message.
 public Action OnUserMsg_Fade(UserMsg msg_id, BfRead msg, const int[] players,
 	int playersNum, bool reliable, bool init)
 {
@@ -310,7 +320,7 @@ public Action OnUserMsg_Fade(UserMsg msg_id, BfRead msg, const int[] players,
 	dp.WriteCell(duration);
 	dp.WriteCell(holdtime);
 	dp.WriteCell(fade_flags);
-	dp.WriteCell(msg.ReadByte());
+	dp.WriteCell(msg.ReadByte()); // r,g,b,a as 4 bytes
 	dp.WriteCell(msg.ReadByte());
 	dp.WriteCell(msg.ReadByte());
 	dp.WriteCell(msg.ReadByte());
@@ -318,6 +328,7 @@ public Action OnUserMsg_Fade(UserMsg msg_id, BfRead msg, const int[] players,
 	return Plugin_Handled;
 }
 
+// UserMsg hook for the "VGUIMenu" message.
 public Action OnUserMsg_VguiMenu(UserMsg msg_id, BfRead msg, const int[] players,
 	int playersNum, bool reliable, bool init)
 {
