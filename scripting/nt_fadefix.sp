@@ -420,7 +420,9 @@ public Action OnUserMsg(UserMsg msg_id, BfRead msg, const int[] players,
 
 	if (playersNum != num_filtered_players)
 	{
+		// Have to recreate the UserMessage because we can't modify the clients array in this hook
 		DataPack dp_final;
+		// Using a data timer to delegate this because we can't fire the UserMsg from inside this UserMsg hook
 		CreateDataTimer(0.0, Timer_SendModifiedUserMsg, dp_final, TIMER_FLAG_NO_MAPCHANGE);
 
 		dp_final.WriteCell(msg_id);
