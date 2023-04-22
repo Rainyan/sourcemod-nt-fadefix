@@ -247,6 +247,8 @@ bool OneTimeUserMsgOverride(int client)
 }
 
 // UserMsg hook for the "Fade" message.
+// NOTE!! You *cannot* use any code that fires a UserMessage inside
+// this hook, such as the PrintToChat... functions.
 public Action OnUserMsg_Fade(UserMsg msg_id, BfRead msg, const int[] players,
 	int playersNum, bool reliable, bool init)
 {
@@ -329,6 +331,8 @@ public Action OnUserMsg_Fade(UserMsg msg_id, BfRead msg, const int[] players,
 }
 
 // UserMsg hook for the "VGUIMenu" message.
+// NOTE!! You *cannot* use any code that fires a UserMessage inside
+// this hook, such as the PrintToChat... functions.
 public Action OnUserMsg_VguiMenu(UserMsg msg_id, BfRead msg, const int[] players,
 	int playersNum, bool reliable, bool init)
 {
@@ -349,7 +353,7 @@ public Action OnUserMsg_VguiMenu(UserMsg msg_id, BfRead msg, const int[] players
 	// be received out-of-order by the client, which could otherwise end
 	// up with them having spectator panel etc. incorrectly not cleared
 	// during the (re)spawn sequence.
-	if (show != 0)
+	if (show == 0)
 	{
 		return Plugin_Continue;
 	}
