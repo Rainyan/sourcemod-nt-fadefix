@@ -519,6 +519,7 @@ public Action Timer_SendModifiedUserMsg(Handle timer, DataPack data)
 	_override_usermsg_hook = true;
 	EndMessage();
 
+	// This is a datatimer, so we don't need to free the DataPack memory here
 	return Plugin_Stop;
 }
 
