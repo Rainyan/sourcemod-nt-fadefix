@@ -29,6 +29,8 @@ vision to block \"ghosting\" for opposing team's loadouts.",
 // Magic value for detecting when we haven't read the data from the related BitBuffer yet
 #define BF_UNINITIALIZED 0xDEADBEEF
 
+#define MAX_FILTERED_VGUI_PANEL_SIZE 7+1 // strlen("loadout") + 1
+
 // UserMsg enumerations.
 // Anonymous because otherwise SM complains when using these to access array
 // indices, or when comparing named enums against integers.
@@ -228,6 +230,13 @@ public Action Timer_DeathFadeFinished(Handle timer, int userid)
 	return Plugin_Stop;
 }
 
+bool OneTimeUserMsgOverride(int client)
+{
+	bool allowed = _override_usermsg_hook[client];
+	_override_usermsg_hook[client] = false;
+	return allowed;
+}
+
 public Action OnUserMsg_Fade(UserMsg msg_id, BfRead msg, const int[] players,
 	int playersNum, bool reliable, bool init)
 {
@@ -244,9 +253,8 @@ public Action OnUserMsg_Fade(UserMsg msg_id, BfRead msg, const int[] players,
 	int num_allowed_players = 0;
 	for (int i = 0; i < playersNum; ++i)
 	{
-		if (_override_usermsg_hook[players[i]])
+		if (OneTimeUserMsgOverride(players[i]))
 		{
-			_override_usermsg_hook[players[i]] = false;
 			allowed_players[num_allowed_players++] = players[i];
 			continue;
 		}
@@ -318,10 +326,18 @@ public Action OnUserMsg_VguiMenu(UserMsg msg_id, BfRead msg, const int[] players
 		return Plugin_Continue;
 	}
 
-	char panel_name[7 + 1]; // strlen("loadout") + 1
+	char panel_name[MAX_FILTERED_VGUI_PANEL_SIZE];
 	msg.ReadString(panel_name, sizeof(panel_name));
 
 	int show = msg.ReadByte();
+	// Actually a boolean, so any nonzero evaluates as true.
+	// We don't cast to bool because it needs to be passed on as-is
+	// to guarantee we don't modify the UserMsg when doing passthrough.
+	// If this is not a "show" message, it means we want to hide a panel,
+	// and this should always be allowed, because the hide messages may
+	// be received out-of-order by the client, which could otherwise end
+	// up with them having spectator panel etc. incorrectly not cleared
+	// during the (re)spawn sequence.
 	if (show != 0)
 	{
 		return Plugin_Continue;
@@ -331,9 +347,8 @@ public Action OnUserMsg_VguiMenu(UserMsg msg_id, BfRead msg, const int[] players
 	int num_allowed_players = 0;
 	for (int i = 0; i < playersNum; ++i)
 	{
-		if (_override_usermsg_hook[players[i]])
+		if (OneTimeUserMsgOverride(players[i]))
 		{
-			_override_usermsg_hook[players[i]] = false;
 			allowed_players[num_allowed_players++] = players[i];
 			continue;
 		}
@@ -378,7 +393,7 @@ public Action OnUserMsg_VguiMenu(UserMsg msg_id, BfRead msg, const int[] players
 				ResetHUD					// <-- Closes all HUD menus
 		*/
 
-		// Block any panel other than "class" and "loadout".
+		// Block showing any panel other than "class" and "loadout".
 		if (StrEqual(panel_name, "class") || StrEqual(panel_name, "loadout"))
 		{
 			allowed_players[num_allowed_players++] = players[i];
@@ -430,6 +445,9 @@ public Action OnUserMsg_VguiMenu(UserMsg msg_id, BfRead msg, const int[] players
 	return Plugin_Handled;
 }
 
+// Data timer callback for creating modified UserMessages.
+// This is required because we can't fire a new UserMsg directly from inside
+// the UserMsg hook itself.
 public Action Timer_SendModifiedUserMsg(Handle timer, DataPack data)
 {
 	data.Reset();
@@ -475,7 +493,7 @@ public Action Timer_SendModifiedUserMsg(Handle timer, DataPack data)
 	}
 	else if (msg_id == _usermsgs[UM_VGUIMENU])
 	{
-		char buffer[64];
+		char buffer[MAX_FILTERED_VGUI_PANEL_SIZE];
 		int subcount = 0;
 		do {
 			data.ReadString(buffer, sizeof(buffer));
@@ -504,17 +522,19 @@ public Action Timer_SendModifiedUserMsg(Handle timer, DataPack data)
 	return Plugin_Stop;
 }
 
+// Simpler & faster version of the custom UserMsg function, for cases where we
+// can just send it without relying on a DataPack.
 void SendFadeMessage(const int[] clients, int num_clients, int fade_flags)
 {
 	Handle userMsg = StartMessageEx(_usermsgs[UM_FADE], clients, num_clients,
 		USERMSG_RELIABLE);
-	BfWriteShort(userMsg, 0);
-	BfWriteShort(userMsg, 0);
-	BfWriteShort(userMsg, fade_flags);
-	BfWriteByte(userMsg, 0);
-	BfWriteByte(userMsg, 0);
-	BfWriteByte(userMsg, 0);
-	BfWriteByte(userMsg, 255);
+	BfWriteShort(userMsg, 0); // Fade duration, in ms.
+	BfWriteShort(userMsg, 0); // Fade hold time, in ms.
+	BfWriteShort(userMsg, fade_flags); // Fade flags.
+	BfWriteByte(userMsg, 0); // RGBA red.
+	BfWriteByte(userMsg, 0); // RGBA green.
+	BfWriteByte(userMsg, 0); // RGBA blue.
+	BfWriteByte(userMsg, 255); // RGBA alpha.
 
 	for (int i = 0; i < num_clients; ++i)
 	{
