@@ -105,7 +105,7 @@ public void OnPluginStart()
 	g_hTimer_ReFade = CreateTimer(1.0, Timer_ReFade, _, TIMER_REPEAT);
 
 	int default_tickrate = 66;
-	float tickrate = 1.0 / GetTickInterval();
+	float tickrate = float(RoundToNearest(1.0 / GetTickInterval()));
 	int ticks_threshold = 20;
 	_alttab_ticks_threshold = RoundToCeil(tickrate / default_tickrate * ticks_threshold);
 	if (_alttab_ticks_threshold < 1)
