@@ -188,19 +188,11 @@ public void OnPlayerRunCmdPost(int client, int buttons, int impulse,
 
 	if (_unfade_allowed[client])
 	{
-#if defined(DEBUG)
-		PrintToServer("Skipping %N because _unfade_allowed == %d",
-			client, _unfade_allowed[client]);
-#endif
 		return;
 	}
 
 	if (_in_death_fade[client])
 	{
-#if defined(DEBUG)
-		PrintToServer("Skipping %N because _in_death_fade == %d",
-			client, _in_death_fade[client]);
-#endif
 		return;
 	}
 
@@ -224,17 +216,7 @@ public void OnPlayerRunCmdPost(int client, int buttons, int impulse,
 		int clients[1];
 		clients[0] = client;
 		SendFadeMessage(clients, 1, FADE_FLAGS_ADD_FADE);
-#if defined(DEBUG)
-		PrintToServer("=> Re-fading: %N", client);
-#endif
 	}
-#if defined(DEBUG)
-	else
-	{
-		PrintToServer("Delta was: %d",
-			Abs(GetGameTickCount() - tickcount));
-	}
-#endif
 }
 
 public void Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
@@ -284,8 +266,6 @@ public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast
 	{
 		return;
 	}
-
-	PrintToServer("Setting unfade disallowed for client %d, %N", victim, victim);
 
 	_unfade_allowed[victim] = false;
 	_in_death_fade[victim] = true;
@@ -384,11 +364,7 @@ public Action Timer_ReFade(Handle timer)
 
 public Action Timer_DeathFadeFinished(Handle timer, int userid)
 {
-	int client = GetClientOfUserId(userid);
-	if (client != 0)
-	{
-		_in_death_fade[client] = false;
-	}
+	_in_death_fade[GetClientOfUserId(userid)] = false;
 	return Plugin_Stop;
 }
 
