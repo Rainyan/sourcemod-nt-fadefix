@@ -4,7 +4,7 @@
 
 #include <neotokyo>
 
-#define PLUGIN_VERSION "0.5.1+dev1"
+#define PLUGIN_VERSION "0.5.1"
 
 public Plugin myinfo = {
 	name = "NT Competitive Fade Fix",
@@ -45,7 +45,7 @@ enum {
 };
 
 UserMsg _usermsgs[UM_ENUM_COUNT] = { INVALID_MESSAGE_ID, ... };
-char _usermsg_name[UM_ENUM_COUNT][8 + 1] = {
+char _usermsg_name[UM_ENUM_COUNT][] = {
 	"Fade",
 	"VGUIMenu",
 };
@@ -137,9 +137,7 @@ public Action Cmd_FadeMe(int client, int args)
 
 	if (!_debug_fademe[client] && IsPlayerAlive(client))
 	{
-		int clients[1];
-		clients[0] = client;
-		SendFadeMessage(clients, 1, FADE_FLAGS_CLEAR_FADE);
+		SendFadeMessageOne(client, FADE_FLAGS_CLEAR_FADE);
 	}
 
 	return Plugin_Handled;
@@ -167,9 +165,7 @@ public void OnPlayerRunCmdPost(int client, int buttons, int impulse,
 	{
 		if (Abs(GetGameTickCount() - tickcount) > _alttab_ticks_threshold)
 		{
-			int clients[1];
-			clients[0] = client;
-			SendFadeMessage(clients, 1, FADE_FLAGS_ADD_FADE);
+			SendFadeMessageOne(client, FADE_FLAGS_ADD_FADE);
 			PrintToChat(client, "[DEBUG] Predicted tickcount delta over threshold (%d > %d); forcing re-fade",
 				Abs(GetGameTickCount() - tickcount),
 				_alttab_ticks_threshold
@@ -213,9 +209,7 @@ public void OnPlayerRunCmdPost(int client, int buttons, int impulse,
 
 	if (Abs(GetGameTickCount() - tickcount) > _alttab_ticks_threshold)
 	{
-		int clients[1];
-		clients[0] = client;
-		SendFadeMessage(clients, 1, FADE_FLAGS_ADD_FADE);
+		SendFadeMessageOne(client, FADE_FLAGS_ADD_FADE);
 	}
 }
 
@@ -253,9 +247,7 @@ public void Event_PlayerSpawn(Event event, const char[] name, bool dontBroadcast
 
 	_unfade_allowed[client] = true;
 
-	int clients[1];
-	clients[0] = client;
-	SendFadeMessage(clients, 1, FADE_FLAGS_CLEAR_FADE);
+	SendFadeMessageOne(client, FADE_FLAGS_CLEAR_FADE);
 }
 
 public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast)
@@ -320,9 +312,7 @@ public Action Timer_FadePlayer(Handle timer, int userid)
 	if (client != 0 && !IsPlayerAlive(client) &&
 		GetClientTeam(client) > TEAM_SPECTATOR)
 	{
-		int clients[1];
-		clients[0] = client;
-		SendFadeMessage(clients, 1, FADE_FLAGS_ADD_FADE);
+		SendFadeMessageOne(client, FADE_FLAGS_ADD_FADE);
 	}
 	return Plugin_Stop;
 }
@@ -684,15 +674,9 @@ void SendFadeMessage(int[] clients, int num_clients, int fade_flags)
 void SendFadeMessage(const int[] clients, int num_clients, int fade_flags)
 #endif
 {
-	BfWrite userMsg = view_as<BfWrite>(StartMessageEx(_usermsgs[UM_FADE], clients, num_clients,
-		USERMSG_RELIABLE));
-	userMsg.WriteShort(0); // Fade duration, in ms.
-	userMsg.WriteShort(0); // Fade hold time, in ms.
-	userMsg.WriteShort(fade_flags); // Fade flags.
-	userMsg.WriteByte(0); // RGBA red.
-	userMsg.WriteByte(0); // RGBA green.
-	userMsg.WriteByte(0); // RGBA blue.
-	userMsg.WriteByte(255); // RGBA alpha.
+	Handle msg = StartMessageEx(_usermsgs[UM_FADE], clients, num_clients,
+		USERMSG_RELIABLE);
+	InitFadeMessage(msg, fade_flags);
 
 	for (int i = 0; i < num_clients; ++i)
 	{
@@ -700,4 +684,29 @@ void SendFadeMessage(const int[] clients, int num_clients, int fade_flags)
 	}
 
 	EndMessage();
+}
+
+void SendFadeMessageOne(int client, int fade_flags)
+{
+	int clients[1];
+	clients[0] = client;
+	Handle msg = StartMessageEx(_usermsgs[UM_FADE], clients, 1,
+		USERMSG_RELIABLE);
+	InitFadeMessage(msg, fade_flags);
+
+	_override_usermsg_hook[client] = true;
+
+	EndMessage();
+}
+
+void InitFadeMessage(Handle message, int fade_flags)
+{
+	BfWrite bfw = UserMessageToBfWrite(message);
+	bfw.WriteShort(0); // Fade duration, in ms.
+	bfw.WriteShort(0); // Fade hold time, in ms.
+	bfw.WriteShort(fade_flags); // Fade flags.
+	bfw.WriteByte(0); // RGBA red.
+	bfw.WriteByte(0); // RGBA green.
+	bfw.WriteByte(0); // RGBA blue.
+	bfw.WriteByte(255); // RGBA alpha.
 }
