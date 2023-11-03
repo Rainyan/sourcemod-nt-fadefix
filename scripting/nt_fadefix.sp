@@ -4,7 +4,7 @@
 
 #pragma semicolon 1
 
-#define PLUGIN_VERSION "0.5.3"
+#define PLUGIN_VERSION "0.5.4"
 
 public Plugin myinfo = {
 	name = "NT Competitive Fade Fix",
