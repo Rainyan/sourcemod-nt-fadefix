@@ -159,7 +159,7 @@ the server");
 }
 #endif
 
-public void OnClientDisconnect(int client)
+public void OnClientDisconnect_Post(int client)
 {
 	_unfade_allowed[client] = true;
 	_in_death_fade[client] = false;
