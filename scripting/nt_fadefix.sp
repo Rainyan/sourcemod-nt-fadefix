@@ -4,7 +4,7 @@
 
 #pragma semicolon 1
 
-#define PLUGIN_VERSION "0.5.4"
+#define PLUGIN_VERSION "0.5.5"
 
 public Plugin myinfo = {
 	name = "NT Competitive Fade Fix",
@@ -57,8 +57,6 @@ static int _alttab_ticks_threshold;
 
 ConVar g_hCvar_FadeEnabled = null;
 
-Handle g_hTimer_ReFade = INVALID_HANDLE;
-
 public void OnPluginStart()
 {
 	for (int i = 0; i < UM_ENUM_COUNT; ++i)
@@ -99,7 +97,7 @@ public void OnPluginStart()
 		SetFailState("Failed to hook event player_team");
 	}
 
-	g_hTimer_ReFade = CreateTimer(1.0, Timer_ReFade, _, TIMER_REPEAT);
+	CreateTimer(1.0, Timer_ReFade, _, TIMER_REPEAT);
 
 	int default_tickrate = 66;
 	float tickrate = float(RoundToNearest(1.0 / GetTickInterval()));
@@ -233,24 +231,9 @@ threshold (%d > %d); forcing re-fade",
 
 public void Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
 {
-	if (g_hTimer_ReFade != INVALID_HANDLE)
-	{
-		KillTimer(g_hTimer_ReFade);
-		g_hTimer_ReFade = CreateTimer(1.0, Timer_ReFade, _, TIMER_REPEAT);
-	}
-
 	if (g_hCvar_FadeEnabled.BoolValue)
 	{
 		FadeAllDeadPlayers(false);
-	}
-}
-
-public void OnMapEnd()
-{
-	if (g_hTimer_ReFade != INVALID_HANDLE)
-	{
-		KillTimer(g_hTimer_ReFade);
-		g_hTimer_ReFade = INVALID_HANDLE;
 	}
 }
 
